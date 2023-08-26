@@ -39,8 +39,7 @@ def read_lightrays():
         mass_to_cgs = UnitMass_in_g / h # Code mass to g
         X_mH = X / mH # X_mH = X / mH
         T_div_emu = GAMMA_MINUS1 * UnitVelocity_in_cm_per_s**2 * PROTONMASS / BOLTZMANN # T / (e * mu)
-
-        var_tot = 0 # for normalization
+        
         bins = 100
         logmin = -13
         logmax = -10
@@ -49,7 +48,7 @@ def read_lightrays():
         edges = np.logspace(logmin, logmax, bins+1)
         x_HI_vals = np.array([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
         z_vals = np.array([0, 6.08892, 6.38506, 6.67, 6.96592, 7.3157, 7.73876, 8.28728, 9.05884, 10.3148, 1e3])
-        hist_final = np.zeros(bins)
+        histograms = np.zeros((len(z_vals) - 1, bins)) 
 
         RM_sums = np.zeros(n_rays) # Ray RM sums
         for i in range(n_rays):
@@ -90,20 +89,15 @@ def read_lightrays():
             RM_sum = np.sum(RM) # Sum of RM along line of sight [rad/m^2]
             RM_sums[i] = RM_sum # Save RM sum
 
-            histograms = []
-
-            for i in range(len(z_vals) - 1):
-                mask = (z >= z_vals[i]) & (z < z_vals[i + 1])
+            for iz in range(len(z_vals) - 1):
+                mask = (z >= z_vals[iz]) & (z < z_vals[iz + 1])
                 x = B_mag
                 x[mask][x[mask]<min_clip] = min_clip
                 x[mask][x[mask]>max_clip] = max_clip
-                # var_tot += ? # for normalization
-                hist, _ = np.histogram(x[mask], weights=np.cumsum(RM[mask]), density=False, bins=edges)
-                hist_final = hist.copy()
-                hist_norm = hist_final
-                histograms.append(hist_norm)
+                hist, _ = np.histogram(x[mask], density=False, bins=edges)
+                histograms[iz, :] += hist
 
-    with h5py.File('histograms_data.h5', 'w') as hf:
+    with h5py.File('histogram_data.h5', 'w') as hf:
         hf.create_dataset('histograms', data=histograms)
         hf.create_dataset('z_vals', data=z_vals)
         hf.create_dataset('x_HI_vals', data=x_HI_vals)
