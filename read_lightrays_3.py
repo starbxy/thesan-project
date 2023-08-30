@@ -106,7 +106,7 @@ def read_lightrays():
     ax.set_xlabel('z', fontsize=18)
     ax.set_ylabel(r"$\ |RM_{med}|\ [rad\ m^{-2}]$", fontsize=18)
     for i in range(n_rays):
-        if cumulative_rm_arrays[i][0] < anomaly_threshold:
+        if np.abs(cumulative_rm_arrays[i][0]) < anomaly_threshold:
             plt.plot(z_arrays[i], np.abs(cumulative_rm_arrays[i]))
         else:
             pass
