@@ -40,8 +40,11 @@ def read_lightrays():
         X_mH = X / mH # X_mH = X / mH
         T_div_emu = GAMMA_MINUS1 * UnitVelocity_in_cm_per_s**2 * PROTONMASS / BOLTZMANN # T / (e * mu)
 
-        x_final = np.array([])
-        y_final = np.array([])
+        #x_final = np.array([])
+        #y_final = np.array([])
+        z_arrays = []
+        cumulative_rm_arrays = []
+        anomaly_threshold = 7000
 
         RM_sums = np.zeros(n_rays) # Ray RM sums
         for i in range(n_rays):
@@ -82,25 +85,33 @@ def read_lightrays():
             RM_sum = np.sum(RM) # Sum of RM along line of sight [rad/m^2]
             RM_sums[i] = RM_sum # Save RM sum
 
-            x = z
-            x_final = np.append(x_final, x)
-            y = RM
-            y_final = np.append(y_final, y)
+            #x = z
+            #x_final = np.append(x_final, x)
+            y = np.cumsum(RM)
+            #y_final = np.append(y_final, y)
+            cumulative_rm_arrays.append(y)
+            z_arrays.append(z)
 
-    x_bins = np.linspace(min(x_final), max(x_final), num=100)  # Define the bins for redshift values
-    median_rms = np.zeros(len(x_bins) - 1) 
 
-    for i in range(len(x_bins) - 1):
-        bin_mask = np.logical_and(x_final >= x_bins[i], x_final < x_bins[i + 1])
-        y_in_bin = y_final[bin_mask]
-        median_rms[i] = np.median(y_in_bin)
+    # median calculation
+    #x_bins = np.linspace(min(x_final), max(x_final), num=100)  # Define the bins for redshift values
+    #median_rms = np.zeros(len(x_bins) - 1) 
+
+    #for i in range(len(x_bins) - 1):
+        #bin_mask = np.logical_and(x_final >= x_bins[i], x_final < x_bins[i + 1])
+        #y_in_bin = y_final[bin_mask]
+        #median_rms[i] = np.median(y_in_bin)
 
     fig, ax = plt.subplots()
     ax.set_xlabel('z', fontsize=18)
-    ax.set_ylabel(r"$\ RM_{med}$", fontsize=18)
-    plt.plot(x_bins[:-1], median_rms, marker='x', linestyle='-', color='black')
-    plt.title(r"$\ RM_{med}$ as a function of z", fontsize=20, y=1.05)
-    plt.xlim(5.5, 8)
+    ax.set_ylabel(r"$\ |RM_{med}|\ [rad\ m^{-2}]$", fontsize=18)
+    for i in range(n_rays):
+        if cumulative_rm_arrays[i][0] < anomaly_threshold:
+            plt.plot(z_arrays[i], np.abs(cumulative_rm_arrays[i]))
+        else:
+            pass
+    plt.title(r"$\ |RM_{med}|$ as a function of z", fontsize=20, y=1.05)
+    plt.xlim(5.5, 10)
     plt.tight_layout()
     plt.savefig('1.pdf', dpi=1000)
 
