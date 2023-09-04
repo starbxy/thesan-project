@@ -3,6 +3,7 @@ import h5py
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from scipy.special import erf
 
 # Arepo constants
 BOLTZMANN = 1.38065e-16     # Boltzmann's constant [g cm^2/sec^2/k]
@@ -44,7 +45,6 @@ def read_lightrays():
         #y_final = np.array([])
         z_arrays = []
         cumulative_rm_arrays = []
-        anomaly_threshold = 7000
 
         RM_sums = np.zeros(n_rays) # Ray RM sums
         for i in range(n_rays):
@@ -85,6 +85,7 @@ def read_lightrays():
             RM[SFR>0]=0 # we ignore cells from the equation of state (EoS)
             RM_sum = np.sum(RM) # Sum of RM along line of sight [rad/m^2]
             RM_sums[i] = RM_sum # Save RM sum
+            #print(RM_sum, np.sum(RM[RM<0]), np.sum(RM[RM>0]))
 
             #x = z
             #x_final = np.append(x_final, x)
@@ -93,25 +94,31 @@ def read_lightrays():
             cumulative_rm_arrays.append(y)
             z_arrays.append(z)
 
-    # median calculation
-    #x_bins = np.linspace(min(x_final), max(x_final), num=100)  # Define the bins for redshift values
-    #median_rms = np.zeros(len(x_bins) - 1) 
+    sigma_68 = erf(1. / np.sqrt(2.))
+    percentiles = [50., 50. * (1. - sigma_68), 50. * (1. + sigma_68)]
+    n_percentiles = len(percentiles)
 
-    #for i in range(len(x_bins) - 1):
-        #bin_mask = np.logical_and(x_final >= x_bins[i], x_final < x_bins[i + 1])
-        #y_in_bin = y_final[bin_mask]
-        #median_rms[i] = np.median(y_in_bin)
+    # Calcualting median RM_cum
+    n_meds = 120
+    z_med = np.linspace(5.5, 20, n_meds)
+    RM_p = np.zeros([3, n_meds])
+    for i_med in range(n_meds):
+        i_mins = np.array([np.argmin(np.abs(z_med[i_med]-z_arrays[i_ray])) for i_ray in range(n_rays)]) 
+        RM_vals = np.array([cumulative_rm_arrays[i_ray][i_mins[i_ray]] for i_ray in range(n_rays)])
+        RM_p[:, i_med] = np.percentile(RM_vals, percentiles)
 
     fig, ax = plt.subplots()
     ax.set_xlabel('z', fontsize=18)
     ax.set_ylabel(r"$\ log_{10}(|RM_{cum}|),\ [rad\ m^{-2}]$", fontsize=18)
     for i in range(n_rays):
         plt.plot(z_arrays[i], np.abs(cumulative_rm_arrays[i]), color='grey', linewidth=0.5, alpha=0.5)
+    plt.fill_between(z_med, RM_p[1], RM_p[2], lw=0., color='C0', alpha=.25, label=r'$\pm 1\sigma$')    
+    plt.plot(z_med, RM_p[0], lw=1.75, c='C0', label='Median')
     plt.title(r"$\ |RM_{cum}|$ as a function of z for each lightray", fontsize=18, y=1.05)
-    plt.xlim(5.5, 12)
+    plt.xlim(5.5, 15)
     plt.yscale('log')
-    plt.ylim(1e-4, 1e4)
-    #plt.legend()
+    plt.ylim(1e-2, 1e4)
+    plt.legend()
     plt.tight_layout()
     plt.savefig('1.pdf', dpi=1000)
 
