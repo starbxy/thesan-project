@@ -74,7 +74,7 @@ def read_lightrays():
             n_H = X_mH * rho * (1. - Z) # Hydrogen number density [cm^-3]
             n_e = x_e * n_H # Electron number density [cm^-3]
             # n_phot = f['PhotonDensity'][s][:].astype(np.float64) # Radiation photon density [HI, HeI, HeII] [code units]
-            # SFR = f['StarFormationRate'][s][:].astype(np.float64) # Star formation rate [M_sun / Yr]
+            SFR = f['StarFormationRate'][s][:].astype(np.float64) # Star formation rate [M_sun / Yr]
             B = f['MagneticField'][s][:].astype(np.float64) # Magnetic field vector (x,y,z) [code units]
             for j in range(3):
                 B[:,j] *= magnetic_to_cgs # Convert magnetic field vector (x,y,z) to Gauss
@@ -82,6 +82,7 @@ def read_lightrays():
             B_los = B[:,2] # Line of sight (z), use this in RM calculations
             dRM_dl = (0.812*1e12/pc) * n_e * B_los / (1.+z)**2 # Rotation measure integrand [rad/m^2/cm]
             RM = dRM_dl * dz# Rotation measure [rad/m^2]
+            RM[SFR>0]=0 # we ignore cells from the equation of state (EoS)
             RM_sum = np.sum(RM) # Sum of RM along line of sight [rad/m^2]
             RM_sums[i] = RM_sum # Save RM sum
 
@@ -91,7 +92,6 @@ def read_lightrays():
             #y_final = np.append(y_final, y)
             cumulative_rm_arrays.append(y)
             z_arrays.append(z)
-
 
     # median calculation
     #x_bins = np.linspace(min(x_final), max(x_final), num=100)  # Define the bins for redshift values
@@ -104,14 +104,14 @@ def read_lightrays():
 
     fig, ax = plt.subplots()
     ax.set_xlabel('z', fontsize=18)
-    ax.set_ylabel(r"$\ |RM_{med}|\ [rad\ m^{-2}]$", fontsize=18)
+    ax.set_ylabel(r"$\ log_{10}(|RM_{cum}|),\ [rad\ m^{-2}]$", fontsize=18)
     for i in range(n_rays):
-        if np.abs(cumulative_rm_arrays[i][0]) < anomaly_threshold:
-            plt.plot(z_arrays[i], np.abs(cumulative_rm_arrays[i]))
-        else:
-            pass
-    plt.title(r"$\ |RM_{med}|$ as a function of z", fontsize=20, y=1.05)
-    plt.xlim(5.5, 10)
+        plt.plot(z_arrays[i], np.abs(cumulative_rm_arrays[i]), color='grey', linewidth=0.5, alpha=0.5)
+    plt.title(r"$\ |RM_{cum}|$ as a function of z for each lightray", fontsize=18, y=1.05)
+    plt.xlim(5.5, 12)
+    plt.yscale('log')
+    plt.ylim(1e-4, 1e4)
+    #plt.legend()
     plt.tight_layout()
     plt.savefig('1.pdf', dpi=1000)
 

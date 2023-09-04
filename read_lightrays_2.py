@@ -39,10 +39,10 @@ def read_lightrays():
         mass_to_cgs = UnitMass_in_g / h # Code mass to g
         X_mH = X / mH # X_mH = X / mH
         T_div_emu = GAMMA_MINUS1 * UnitVelocity_in_cm_per_s**2 * PROTONMASS / BOLTZMANN # T / (e * mu)
-        
-        bins = 100
+
+        bins = 25
         logmin = -13
-        logmax = -10
+        logmax = -7
         min_clip = 1.00000000001*10.**logmin
         max_clip = 0.99999999999*10.**logmax
         edges = np.logspace(logmin, logmax, bins+1)
@@ -78,7 +78,7 @@ def read_lightrays():
             n_H = X_mH * rho * (1. - Z) # Hydrogen number density [cm^-3]
             n_e = x_e * n_H # Electron number density [cm^-3]
             # n_phot = f['PhotonDensity'][s][:].astype(np.float64) # Radiation photon density [HI, HeI, HeII] [code units]
-            # SFR = f['StarFormationRate'][s][:].astype(np.float64) # Star formation rate [M_sun / Yr]
+            SFR = f['StarFormationRate'][s][:].astype(np.float64) # Star formation rate [M_sun / Yr]
             B = f['MagneticField'][s][:].astype(np.float64) # Magnetic field vector (x,y,z) [code units]
             for j in range(3):
                 B[:,j] *= magnetic_to_cgs # Convert magnetic field vector (x,y,z) to Gauss
@@ -86,6 +86,7 @@ def read_lightrays():
             B_los = B[:,2] # Line of sight (z), use this in RM calculations
             dRM_dl = (0.812*1e12/pc) * n_e * B_los / (1.+z)**2 # Rotation measure integrand [rad/m^2/cm]
             RM = dRM_dl * dz# Rotation measure [rad/m^2]
+            RM[SFR>0]=0 # we ignore cells from the equation of state (EoS)
             RM_sum = np.sum(RM) # Sum of RM along line of sight [rad/m^2]
             RM_sums[i] = RM_sum # Save RM sum
 
@@ -94,7 +95,8 @@ def read_lightrays():
                 x = B_mag
                 x[mask][x[mask]<min_clip] = min_clip
                 x[mask][x[mask]>max_clip] = max_clip
-                hist, _ = np.histogram(x[mask], density=False, bins=edges)
+                weight = np.abs(RM)
+                hist, _ = np.histogram(x[mask], weights=weight[mask], density=False, bins=edges)
                 histograms[iz, :] += hist
 
     with h5py.File('histogram_data.h5', 'w') as hf:
