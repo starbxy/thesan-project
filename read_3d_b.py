@@ -63,6 +63,8 @@ def read_3d(snap=80, out_dir='.'):
         Hz = 100. * h * np.sqrt(1. - Omega0 + Omega0/a**3) # Hubble parameter [km/s/Mpc]
         Hz_cgs = Hz * km / Mpc # Hubble parameter [1/s]
 
+    tot_rm_dl = 0
+
     for i in range(n_files):
         filename = f'{file_dir}/snap_{snap:03d}.{i}.hdf5'
         with h5py.File(filename, 'r') as f:
@@ -88,8 +90,10 @@ def read_3d(snap=80, out_dir='.'):
             RM_dl = (0.812*1e12/pc)*(n_H * x_e * B_mag  / ((1+z)**2)) 
             n_e = n_H * x_e # Electron number density [cm^-3]
 
-            tot_rm_dl = np.sum(np.abs(RM_dl))
-            results.append((z, tot_rm_dl))
+            tot_rm_dl_local = np.sum(np.abs(RM_dl))
+            tot_rm_dl += tot_rm_dl_local
+    
+    results.append((z, tot_rm_dl))
 
 filename = 'data.h5'
 with h5py.File(filename, 'w') as f:
