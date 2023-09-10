@@ -30,6 +30,8 @@ lambda0 = 1e8 * c / nu0    # Lya wavelength [Angstroms]
 DnuL = 9.936e7             # Natural line width [Hz]
 kappa_dust = 7.177e4       # Lya dust opacity [cm^2/g dust]
 
+results = []
+
 def read_3d(snap=80, out_dir='.'):
     file_dir = f'/nfs/mvogelsblab001/Thesan/HighRes/L4_N256/output/snapdir_{snap:03d}'
     # /nfs/mvogelsblab001/Thesan/Thesan-1/output/snapdir_080
@@ -60,14 +62,6 @@ def read_3d(snap=80, out_dir='.'):
         T_div_emu = GAMMA_MINUS1 * UnitVelocity_in_cm_per_s**2 * PROTONMASS / BOLTZMANN # T / (e * mu)
         Hz = 100. * h * np.sqrt(1. - Omega0 + Omega0/a**3) # Hubble parameter [km/s/Mpc]
         Hz_cgs = Hz * km / Mpc # Hubble parameter [1/s]
-    
-    n_bins = 100
-    log_min = -40
-    log_max = -20
-    min_clip = 1.000001*10.**log_min
-    max_clip = 0.999999*10.**log_max
-    log_edges = np.logspace(log_min, log_max, n_bins+1)
-    hist_total = np.zeros(n_bins)
 
     for i in range(n_files):
         filename = f'{file_dir}/snap_{snap:03d}.{i}.hdf5'
@@ -91,22 +85,18 @@ def read_3d(snap=80, out_dir='.'):
             B_mag = np.sqrt(np.sum(B**2, axis=1)) # Magnitude of B field [Gauss]
             B_los = B[:,2] # Line of sight (z), use this in RM calculations
             RM_dz = (0.812*1e12/pc)*(n_H * x_e * B_los  / ((1+z)**2))
-            RM_dl = (0.812*1e12/pc)*(n_H * x_e * B_mag  / ((1+z)**2))
+            RM_dl = (0.812*1e12/pc)*(n_H * x_e * B_mag  / ((1+z)**2)) 
             n_e = n_H * x_e # Electron number density [cm^-3]
 
-            var = np.abs(RM_dl)
-            var[var<min_clip] = min_clip
-            var[var>max_clip] = max_clip
-            hist_local, _ = np.histogram(var, weights=(V)**(1/3), density=False, bins=log_edges)
-            hist_total += hist_local
-        
-        filename = f'hist_{snap:03d}.hdf5'
-        with h5py.File(filename, 'w') as f:
-            f['n_bins'] = np.int32(n_bins)
-            f['log_min'] = np.int32(log_min)
-            f['log_max'] = np.int32(log_max)
-            f['z'] = np.int32(z)
-            f.create_dataset('hist_total', data=hist_total)
+            tot_rm_dl = np.sum(np.abs(RM_dl))
+            results.append((z, tot_rm_dl))
 
-for snap in [80, 70, 54, 43, 34, 27]: # corresponding to redshifts of 5.5, 6, 7, 8, 9, 10, respectively -- snapdir goes from 000 to 091
-    read_3d(snap=snap)
+filename = 'data.h5'
+with h5py.File(filename, 'w') as f:
+    for snap in range(92):
+        read_3d(snap=snap)
+
+    results_array = np.array(results)
+
+    f.create_dataset('redshift', data=results_array[:, 0])
+    f.create_dataset('tot_rm_dl', data=results_array[:, 1])
