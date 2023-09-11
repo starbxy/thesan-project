@@ -63,7 +63,7 @@ def read_3d(snap=80, out_dir='.'):
         Hz = 100. * h * np.sqrt(1. - Omega0 + Omega0/a**3) # Hubble parameter [km/s/Mpc]
         Hz_cgs = Hz * km / Mpc # Hubble parameter [1/s]
 
-    tot_rm_dl = 0
+    variable_total = 0
 
     for i in range(n_files):
         filename = f'{file_dir}/snap_{snap:03d}.{i}.hdf5'
@@ -92,13 +92,10 @@ def read_3d(snap=80, out_dir='.'):
             RM_dl[SFR>0]=0 # we ignore cells from the equation of state (EoS)
             n_e = n_H * x_e # Electron number density [cm^-3]
 
-            tot_rm_dl_local = np.sum(np.abs(RM_dl))
-            tot_rm_dl += tot_rm_dl_local
-
-            tot_avg_rm_dl_local = np.sum(RM_dl * (V)) / np.sum(V)
-            tot_avg_rm_dl += tot_avg_rm_dl_local
+            variable_local = np.sum(rho * V) / np.sum(V)
+            variable_total += variable_local
     
-    results.append((z, tot_rm_dl))
+    results.append((z, variable_total))
 
 filename = 'data.h5'
 with h5py.File(filename, 'w') as f:
@@ -108,4 +105,4 @@ with h5py.File(filename, 'w') as f:
     results_array = np.array(results)
 
     f.create_dataset('redshift', data=results_array[:, 0])
-    f.create_dataset('tot_rm_dl', data=results_array[:, 1])
+    f.create_dataset('variable', data=results_array[:, 1])
