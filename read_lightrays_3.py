@@ -85,6 +85,11 @@ def read_lightrays():
             RM[SFR>0]=0 # we ignore cells from the equation of state (EoS)
             RM_sum = np.sum(RM) # Sum of RM along line of sight [rad/m^2]
             RM_sums[i] = RM_sum # Save RM sum
+            rho_crit = # fn of z
+            factor = 
+            RM[rho/rho_crit > factor] = 0
+            RM_sum_3 = np.sum(RM) # Sum of RM along line of sight [rad/m^2]
+            RM_sums_3[i] = RM_sum # Save RM sum
             #print(RM_sum, np.sum(RM[RM<0]), np.sum(RM[RM>0]))
 
             #x = z

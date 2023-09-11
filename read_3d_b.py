@@ -88,10 +88,15 @@ def read_3d(snap=80, out_dir='.'):
             B_los = B[:,2] # Line of sight (z), use this in RM calculations
             RM_dz = (0.812*1e12/pc)*(n_H * x_e * B_los  / ((1+z)**2))
             RM_dl = (0.812*1e12/pc)*(n_H * x_e * B_mag  / ((1+z)**2)) 
+            RM_dz[SFR>0]=0 # we ignore cells from the equation of state (EoS)
+            RM_dl[SFR>0]=0 # we ignore cells from the equation of state (EoS)
             n_e = n_H * x_e # Electron number density [cm^-3]
 
             tot_rm_dl_local = np.sum(np.abs(RM_dl))
             tot_rm_dl += tot_rm_dl_local
+
+            tot_avg_rm_dl_local = np.sum(RM_dl * (V)) / np.sum(V)
+            tot_avg_rm_dl += tot_avg_rm_dl_local
     
     results.append((z, tot_rm_dl))
 

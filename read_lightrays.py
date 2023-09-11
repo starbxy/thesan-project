@@ -94,6 +94,7 @@ def read_lightrays():
             B_los = B[:,2] # Line of sight (z), use this in RM calculations
             dRM_dl = (0.812*1e12/pc) * n_e * B_los / (1.+z)**2 # Rotation measure integrand [rad/m^2/cm]
             RM = dRM_dl * dz # Rotation measure [rad/m^2]
+            RM[SFR>0]=0 # we ignore cells from the equation of state (EoS)
             RM_sum = np.sum(RM) # Sum of RM along line of sight [rad/m^2]
             RM_sums[i] = RM_sum # Save RM sum
             # print(f'RM = {RM_sum:.3f} rad/m^2')
