@@ -92,7 +92,7 @@ def read_3d(snap=80, out_dir='.'):
             RM_dl[SFR>0]=0 # we ignore cells from the equation of state (EoS)
             n_e = n_H * x_e # Electron number density [cm^-3]
 
-            variable_local = np.sum(rho * V) / np.sum(V)
+            variable_local = np.sum(n_e * V) / np.sum(V)
             variable_total += variable_local
     
     results.append((z, variable_total))

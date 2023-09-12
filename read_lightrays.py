@@ -86,7 +86,7 @@ def read_lightrays():
             n_H = X_mH * rho * (1. - Z) # Hydrogen number density [cm^-3]
             n_e = x_e * n_H # Electron number density [cm^-3]
             # n_phot = f['PhotonDensity'][s][:].astype(np.float64) # Radiation photon density [HI, HeI, HeII] [code units]
-            # SFR = f['StarFormationRate'][s][:].astype(np.float64) # Star formation rate [M_sun / Yr]
+            SFR = f['StarFormationRate'][s][:].astype(np.float64) # Star formation rate [M_sun / Yr]
             B = f['MagneticField'][s][:].astype(np.float64) # Magnetic field vector (x,y,z) [code units]
             for j in range(3):
                 B[:,j] *= magnetic_to_cgs # Convert magnetic field vector (x,y,z) to Gauss
