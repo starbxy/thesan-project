@@ -24,6 +24,7 @@ me = 9.109382917e-28       # Electron mass [g]
 ee = 4.80320451e-10        # Electron charge [g^(1/2) cm^(3/2) / s]
 X  = 0.76                  # Primordial hydrogen mass fraction
 epsilon0 = 8.854187e-12    # Vacuum permittivity [F m^-1]
+G = 6.6725985e-8 # Gravitational constant [cm^3/g/s^2]
 
 def read_lightrays():
     filename = f'/nfs/mvogelsblab001/Thesan/Thesan-1/postprocessing/lightrays.hdf5'
@@ -32,6 +33,8 @@ def read_lightrays():
         n_rays = f.attrs['NumRays'] # Number of rays
         n_pixels = int(np.sqrt(n_rays))
         Omega0 = f.attrs['Omega0'] # Cosmic matter density (~0.3)
+        OmegaB = f.attrs['OmegaBaryon']
+        H0 = h * 100. * km / Mpc
         OmegaBaryon = f.attrs['OmegaBaryon'] # Cosmic baryon density
         UnitLength_in_cm = f.attrs['UnitLength_in_cm'] # Code length units (no cosmology)
         UnitMass_in_g = f.attrs['UnitMass_in_g'] # Code mass units (no cosmology)
@@ -43,6 +46,9 @@ def read_lightrays():
 
         z_arrays = []
         cumulative_arrays = []
+        cumulative_array_3 = []
+        cumulative_array_2 = []
+        cumulative_array_1 = []
 
         RM_sums = np.zeros(n_rays) # Ray RM sums
         for i in range(n_rays):
@@ -80,12 +86,16 @@ def read_lightrays():
             B_los = B[:,2] # Line of sight (z), use this in RM calculations
             dRM_dl = (0.812*1e12/pc) * n_e * B_los / (1.+z)**2 # Rotation measure integrand [rad/m^2/cm]
             RM = dRM_dl * dz # Rotation measure [rad/m^2]
+            rho_crit_0 = 3. * H0**2 / (8. * np.pi * G) # Present critical density = 3H0^2/8piG [g/cm^3]
+            rho_z = OmegaB * rho_crit_0 * (1. + z)**3 # Physical density [g/cm^3]
             RM[SFR>0]=0 # we ignore cells from the equation of state (EoS)
-            RM_sum = np.sum(RM) # Sum of RM along line of sight [rad/m^2]
-            RM_sums[i] = RM_sum # Save RM sum
-            #print(RM_sum, np.sum(RM[RM<0]), np.sum(RM[RM>0]))
-
-            cumulative_arrays.append(np.cumsum(n_e))
+            cumulative_arrays.append(np.cumsum(RM))
+            RM[rho/rho_z > 1e3] = 0. # Ignore gas that is overdense by a factor of 10^3
+            cumulative_array_3.append(np.cumsum(RM))
+            RM[rho/rho_z > 1e2] = 0. # Ignore gas that is overdense by a factor of 10^2
+            cumulative_array_2.append(np.cumsum(RM))
+            RM[rho/rho_z > 1e1] = 0. # Ignore gas that is overdense by a factor of 10
+            cumulative_array_1.append(np.cumsum(RM))
             z_arrays.append(z)
 
     sigma_68 = erf(1. / np.sqrt(2.))
@@ -96,24 +106,58 @@ def read_lightrays():
     n_meds = 120
     z_med = np.linspace(5.5, 20, n_meds)
     RM_p = np.zeros([3, n_meds])
+    RM_p_1 = np.zeros([3, n_meds])
+    RM_p_2 = np.zeros([3, n_meds])
+    RM_p_3 = np.zeros([3, n_meds])
     for i_med in range(n_meds):
         i_mins = np.array([np.argmin(np.abs(z_med[i_med]-z_arrays[i_ray])) for i_ray in range(n_rays)]) 
         RM_vals = np.array([cumulative_arrays[i_ray][i_mins[i_ray]] for i_ray in range(n_rays)])
         RM_p[:, i_med] = np.percentile(RM_vals, percentiles)
+    for i_med in range(n_meds):
+        i_mins = np.array([np.argmin(np.abs(z_med[i_med]-z_arrays[i_ray])) for i_ray in range(n_rays)]) 
+        RM_vals = np.array([cumulative_array_3[i_ray][i_mins[i_ray]] for i_ray in range(n_rays)])
+        RM_p_3[:, i_med] = np.percentile(RM_vals, percentiles)
+    for i_med in range(n_meds):
+        i_mins = np.array([np.argmin(np.abs(z_med[i_med]-z_arrays[i_ray])) for i_ray in range(n_rays)]) 
+        RM_vals = np.array([cumulative_array_2[i_ray][i_mins[i_ray]] for i_ray in range(n_rays)])
+        RM_p_2[:, i_med] = np.percentile(RM_vals, percentiles)
+    for i_med in range(n_meds):
+        i_mins = np.array([np.argmin(np.abs(z_med[i_med]-z_arrays[i_ray])) for i_ray in range(n_rays)]) 
+        RM_vals = np.array([cumulative_array_1[i_ray][i_mins[i_ray]] for i_ray in range(n_rays)])
+        RM_p_1[:, i_med] = np.percentile(RM_vals, percentiles)
 
-    fig, ax = plt.subplots()
-    ax.set_xlabel('z', fontsize=18)
-    ax.set_ylabel(r"$\ log_{10}(n_{e}),\ [cm^{-3}]$", fontsize=18)
-    for i in range(n_rays):
-        plt.plot(z_arrays[i], np.abs(cumulative_arrays[i]), color='grey', linewidth=0.5, alpha=0.5)
-    plt.fill_between(z_med, RM_p[1], RM_p[2], lw=0., color='C0', alpha=.25, label=r'$\pm 1\sigma$')    
+    fig, axs = plt.subplots(1, 4, figsize=(16, 4))
+
+    plt.subplot(1, 4, 1)
     plt.plot(z_med, RM_p[0], lw=1.75, c='C0', label='Median')
-    plt.title(r"$\ n_{e}$ as a function of z for each lightray", fontsize=18, y=1.05)
+    plt.fill_between(z_med, RM_p[1], RM_p[2], lw=0., color='C0', alpha=.25, label=r'$\pm 1\sigma$')  
+    plt.title('All gas')
     plt.xlim(5.5, 15)
-    plt.yscale('log')
-    plt.ylim(10 ** -5, 10 ** 1.5)
     plt.legend()
+
+    plt.subplot(1, 4, 2)
+    plt.plot(z_med, RM_p_3[0], lw=1.75, c='C0', label='Median')
+    plt.fill_between(z_med, RM_p_3[1], RM_p_3[2], lw=0., color='C0', alpha=.25, label=r'$\pm 1\sigma$')  
+    plt.title('Overdense by 10^3')
+    plt.xlim(5.5, 15)
+
+    plt.subplot(1, 4, 3)
+    plt.plot(z_med, RM_p_2[0], lw=1.75, c='C0', label='Median')
+    plt.fill_between(z_med, RM_p_2[1], RM_p_2[2], lw=0., color='C0', alpha=.25, label=r'$\pm 1\sigma$')  
+    plt.title('Overdense by 10^2')
+    plt.xlim(5.5, 15)
+
+    plt.subplot(1, 4, 4)
+    plt.plot(z_med, RM_p_1[0], lw=1.75, c='C0', label='Median')
+    plt.fill_between(z_med, RM_p_1[1], RM_p_1[2], lw=0., color='C0', alpha=.25, label=r'$\pm 1\sigma$')  
+    plt.title('Overdense by 10')
+    plt.xlim(5.5, 15)
+
     plt.tight_layout()
+    plt.subplots_adjust(bottom=0.2)
+    plt.subplots_adjust(left=0.1)
+    fig.text(0.5, 0.04, 'z', ha='center', fontsize=25)  # Universal x-label
+    fig.text(0.04, 0.5, r"$\ RM_{cum},\ [rad\ m^{-2}]$", va='center', rotation='vertical', fontsize=25)  # Universal y-label
     plt.savefig('1.pdf', dpi=1000)
 
 read_lightrays()
