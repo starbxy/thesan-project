@@ -64,13 +64,15 @@ def read_lightrays():
             # x_HI = f['HI_Fraction'][s][:].astype(np.float64) # Neutral hydrogen fraction (n_HI / n_H)
             x_e = f['ElectronAbundance'][s][:].astype(np.float64) # Electron abundance (n_e / n_H)
             mu = 4. / (1. + 3.*X + 4.*X * x_e) # Mean molecular mass [mH] units of proton mass
+            mu_e = 2/(1+X) # Mean molecular electron mass
             T = T_div_emu * f['InternalEnergy'][s][:].astype(np.float64) * mu # Gas temperature [K]
             # v = velocity_to_cgs * f['Velocity'][s][:].astype(np.float64) # Line of sight velocity [cm/s]
             rho = density_to_cgs * f['Density'][s][:].astype(np.float64) # Density [g/cm^3]
             # D = f['GFM_DustMetallicity'][s][:].astype(np.float64) # Dust-to-gas ratio
             Z = f['GFM_Metallicity'][s][:].astype(np.float64) # Metallicity [mass fraction]
             n_H = X_mH * rho * (1. - Z) # Hydrogen number density [cm^-3]
-            n_e = x_e * n_H # Electron number density [cm^-3]
+            #n_e = x_e * n_H # Electron number density [cm^-3]
+            n_e = rho/(PROTONMASS * mu_e) # Assuming all gas is ionized
             # n_phot = f['PhotonDensity'][s][:].astype(np.float64) # Radiation photon density [HI, HeI, HeII] [code units]
             SFR = f['StarFormationRate'][s][:].astype(np.float64) # Star formation rate [M_sun / Yr]
             B = f['MagneticField'][s][:].astype(np.float64) # Magnetic field vector (x,y,z) [code units]
@@ -85,7 +87,7 @@ def read_lightrays():
             RM_sums[i] = RM_sum # Save RM sum
             #print(RM_sum, np.sum(RM[RM<0]), np.sum(RM[RM>0]))
 
-            cumulative_arrays.append(np.cumsum(n_e))
+            cumulative_arrays.append(np.cumsum(RM))
             z_arrays.append(z)
 
     sigma_68 = erf(1. / np.sqrt(2.))
@@ -103,15 +105,15 @@ def read_lightrays():
 
     fig, ax = plt.subplots()
     ax.set_xlabel('z', fontsize=18)
-    ax.set_ylabel(r"$\ log_{10}(n_{e}),\ [cm^{-3}]$", fontsize=18)
+    ax.set_ylabel(r"$\ log_{10}(|RM_{cum}|),\ [rad\ m^{-2}]$", fontsize=18)
     for i in range(n_rays):
         plt.plot(z_arrays[i], np.abs(cumulative_arrays[i]), color='grey', linewidth=0.5, alpha=0.5)
     plt.fill_between(z_med, RM_p[1], RM_p[2], lw=0., color='C0', alpha=.25, label=r'$\pm 1\sigma$')    
     plt.plot(z_med, RM_p[0], lw=1.75, c='C0', label='Median')
-    plt.title(r"$\ n_{e}$ as a function of z for each lightray", fontsize=18, y=1.05)
+    plt.title(r"$\ |RM_{cum}|$ as a function of z for each lightray assuming gas is ionized", fontsize=13, y=1.05)
     plt.xlim(5.5, 15)
     plt.yscale('log')
-    plt.ylim(10 ** -5, 10 ** 1.5)
+    plt.ylim(10 ** 2.2, 10 ** 4)
     plt.legend()
     plt.tight_layout()
     plt.savefig('1.pdf', dpi=1000)
