@@ -71,8 +71,8 @@ def read_lightrays():
             # D = f['GFM_DustMetallicity'][s][:].astype(np.float64) # Dust-to-gas ratio
             Z = f['GFM_Metallicity'][s][:].astype(np.float64) # Metallicity [mass fraction]
             n_H = X_mH * rho * (1. - Z) # Hydrogen number density [cm^-3]
-            #n_e = x_e * n_H # Electron number density [cm^-3]
-            n_e = rho/(PROTONMASS * mu_e) # Assuming all gas is ionized
+            n_e = x_e * n_H # Electron number density [cm^-3]
+            # n_e = rho/(PROTONMASS * mu_e) # Assuming all gas is ionized
             # n_phot = f['PhotonDensity'][s][:].astype(np.float64) # Radiation photon density [HI, HeI, HeII] [code units]
             SFR = f['StarFormationRate'][s][:].astype(np.float64) # Star formation rate [M_sun / Yr]
             B = f['MagneticField'][s][:].astype(np.float64) # Magnetic field vector (x,y,z) [code units]
@@ -103,6 +103,14 @@ def read_lightrays():
         RM_vals = np.array([cumulative_arrays[i_ray][i_mins[i_ray]] for i_ray in range(n_rays)])
         RM_p[:, i_med] = np.percentile(RM_vals, percentiles)
 
+    n_avgs = 120
+    z_avg = np.linspace(5.5, 20, n_avgs)
+    RM_mean = np.zeros(n_avgs)
+    for i_avg in range(n_avgs):
+        i_closest = np.array([np.argmin(np.abs(z_avg[i_avg] - z_arrays[i_ray])) for i_ray in range(n_rays)])
+        RM_vals = np.array([cumulative_arrays[i_ray][i_closest[i_ray]] for i_ray in range(n_rays)])
+        RM_mean[i_avg] = np.mean(RM_vals)
+
     fig, ax = plt.subplots()
     ax.set_xlabel('z', fontsize=18)
     ax.set_ylabel(r"$\ log_{10}(|RM_{cum}|),\ [rad\ m^{-2}]$", fontsize=18)
@@ -110,10 +118,11 @@ def read_lightrays():
         plt.plot(z_arrays[i], np.abs(cumulative_arrays[i]), color='grey', linewidth=0.5, alpha=0.5)
     plt.fill_between(z_med, RM_p[1], RM_p[2], lw=0., color='C0', alpha=.25, label=r'$\pm 1\sigma$')    
     plt.plot(z_med, RM_p[0], lw=1.75, c='C0', label='Median')
-    plt.title(r"$\ |RM_{cum}|$ as a function of z for each lightray assuming gas is ionized", fontsize=13, y=1.05)
+    plt.plot(z_med, RM_mean, lw=1.75, c='C3', label='Mean')
+    #plt.title(r"$\ |RM_{cum}|$ as a function of z for each lightray", fontsize=13, y=1.05)
     plt.xlim(5.5, 15)
     plt.yscale('log')
-    plt.ylim(10 ** 2.2, 10 ** 4)
+    plt.ylim(10 ** -2, 10 ** 4)
     plt.legend()
     plt.tight_layout()
     plt.savefig('1.pdf', dpi=1000)
