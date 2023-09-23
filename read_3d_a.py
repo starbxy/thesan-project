@@ -75,6 +75,7 @@ def read_3d(snap=80, out_dir='.'):
             p = f['PartType0']
             
             x_HI = p['HI_Fraction'][:].astype(np.float64) # Neutral hydrogen fraction (n_HI / n_H)
+            x_HII = 1 - x_HI
             x_e = p['ElectronAbundance'][:].astype(np.float64) # Electron abundance (n_e / n_H)
             mu = 4. / (1. + 3.*X + 4.*X * x_e) # Mean molecular mass [mH] units of proton mass
             T = T_div_emu * p['InternalEnergy'][:].astype(np.float64) * mu # Gas temperature [K]
