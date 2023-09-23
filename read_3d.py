@@ -62,14 +62,16 @@ def read_3d(snap=80, out_dir='.'):
         Hz_cgs = Hz * km / Mpc # Hubble parameter [1/s]
 
     n_bins = 100
-    logmin = -8
-    logmax = 8
+    logmin = -15
+    logmax = 5
     min_clip = 1.000001*10.**logmin
     max_clip = 0.999999*10.**logmax
     edges = np.logspace(logmin, logmax, n_bins+1)
-    hist_V = np.zeros(n_bins)
-    hist_m = np.zeros(n_bins)
-    hist_RM = np.zeros(n_bins)
+    #hist_V = np.zeros(n_bins)
+    #hist_m = np.zeros(n_bins)
+    #hist_RM = np.zeros(n_bins)
+    hist_xHI = np.zeros(n_bins)
+    hist_xHII = np.zeros(n_bins)
 
     for i in range(n_files):
         filename = f'{file_dir}/snap_{snap:03d}.{i}.hdf5'
@@ -97,27 +99,30 @@ def read_3d(snap=80, out_dir='.'):
             RM_dz[SFR>0]=0 # we ignore cells from the equation of state (EoS)
             dRMbydl = RM_dz
             n_e = n_H * x_e # Electron number density [cm^-3]
+
+            var = B_mag
+            var[var<min_clip] = min_clip
+            var[var>max_clip] = max_clip
+
+            #hist_local_V, _ = np.histogram(T, weights=V, density=False, bins=edges)
+            #hist_local_m, _ = np.histogram(T, weights=m, density=False, bins=edges)
+            #hist_local_RM, _ = np.histogram(T, weights=RM_dz * (V ** (1/3)), density=False, bins=edges)
+            #hist_V += hist_local_V
+            #hist_m += hist_local_m
+            #hist_RM += hist_local_RM
+
+            hist_local_xHI, _ = np.histogram(var, weights=V * x_HI, density=False, bins=edges)
+            hist_local_xHII, _ = np.histogram(var, weights=V * x_HII, density=False, bins=edges)
+            hist_xHI += hist_local_xHI
+            hist_xHII += hist_local_xHII
             
-            T[T<min_clip] = min_clip
-            T[T>max_clip] = max_clip
-
-            hist_local_V, _ = np.histogram(T, weights=V, density=False, bins=edges)
-            hist_local_m, _ = np.histogram(T, weights=m, density=False, bins=edges)
-            hist_local_RM, _ = np.histogram(T, weights=RM_dz * (V ** (1/3)), density=False, bins=edges)
-
-            hist_V += hist_local_V
-            hist_m += hist_local_m
-            hist_RM += hist_local_RM
-
-        filename = f'Temperature_hist_{snap:03d}.hdf5' # change this depending on what you're plotting
+        filename = f'Bmag_hist_{snap:03d}_ion.hdf5' # change this depending on what you're plotting
         with h5py.File(filename, 'w') as f:
             f['n_bins'] = np.int32(n_bins)
             f['logmin'] = np.int32(logmin)
             f['logmax'] = np.int32(logmax)
-            f.create_dataset('hist_V', data=hist_V)
-            f.create_dataset('hist_m', data=hist_m)
-            f.create_dataset('hist_RM', data=hist_RM)
+            f.create_dataset('hist_xHI', data=hist_xHI)
+            f.create_dataset('hist_xHII', data=hist_xHII)
 
-# read_3d() 
 for snap in [80, 70, 54, 43, 34, 27]: # corresponding to redshifts of 5.5, 6, 7, 8, 9, 10, respectively
     read_3d(snap=snap)
