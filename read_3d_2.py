@@ -70,19 +70,19 @@ def read_3d_2(snap=80, out_dir='.'):
     log_ne_max = 6
     log_B_min = -14
     log_B_max = -6
-    log_T_min = -1
-    log_T_max = 6
+    #log_T_min = -1
+    #log_T_max = 6
 
     ne_min_clip = 1.000001*10.**log_ne_min
     ne_max_clip = 0.999999*10.**log_ne_max
     B_min_clip = 1.000001*10.**log_B_min
     B_max_clip = 0.999999*10.**log_B_max
-    T_min_clip = 1.000001*10.**log_T_min
-    T_max_clip = 0.999999*10.**log_T_max
+    #T_min_clip = 1.000001*10.**log_T_min
+    #T_max_clip = 0.999999*10.**log_T_max
 
     log_edges_ne = np.logspace(log_ne_min, log_ne_max, n_bins+1)
     log_edges_B = np.logspace(log_B_min, log_B_max, n_bins+1)
-    log_edges_T = np.logspace(log_T_min, log_T_max, n_bins+1)
+    #log_edges_T = np.logspace(log_T_min, log_T_max, n_bins+1)
 
     for i in range(n_files):
         filename = f'{file_dir}/snap_{snap:03d}.{i}.hdf5'
@@ -111,23 +111,25 @@ def read_3d_2(snap=80, out_dir='.'):
             n_e[n_e>ne_max_clip] = ne_max_clip
             B_mag[B_mag<B_min_clip] = B_min_clip
             B_mag[B_mag>B_max_clip] = B_max_clip
-            T[T<T_min_clip] = T_min_clip
-            T[T>T_max_clip] = T_max_clip
+            #T[T<T_min_clip] = T_min_clip
+            #T[T>T_max_clip] = T_max_clip
 
             # Creating the 2d histograms
-            counts, xedges, yedges = np.histogram2d(n_e, B_mag, weights=m, normed=False, bins=[log_edges_ne, log_edges_B]) # normed <-> density
-            counts2, xedges2, yedges2 = np.histogram2d(n_e, T, weights=m, normed=False, bins=[log_edges_ne, log_edges_T])
+            counts, xedges, yedges = np.histogram2d(n_e, B_mag, weights=(V * x_HI), normed=False, bins=[log_edges_ne, log_edges_B]) # normed <-> density
+            #counts2, xedges2, yedges2 = np.histogram2d(n_e, T, weights=m, normed=False, bins=[log_edges_ne, log_edges_T])
+            counts2, xedges2, yedges2 = np.histogram2d(n_e, B_mag, weights=(V * x_HII), normed=False, bins=[log_edges_ne, log_edges_B])
 
             hist_1 += counts
             hist_2 += counts2
 
         filename = f'Hist_2d_{snap:03d}.hdf5'
         with h5py.File(filename, 'w') as f:
-            f.create_dataset('hist_ne_B', data=hist_1)
-            f.create_dataset('hist_ne_T', data=hist_2)
+            f.create_dataset('hist_ne_B_1', data=hist_1)
+            f.create_dataset('hist_ne_B_2', data=hist_2)
             f.create_dataset('edges_ne', data=xedges)
             f.create_dataset('edges_B', data=yedges)
-            f.create_dataset('edges_T', data=yedges2)
+            #f.create_dataset('edges_T', data=yedges2)
 
-for snap in [80, 70, 54, 43, 34, 27]: # change number depending on whatever redshift you want to plot
+#for snap in [80, 70, 54, 43, 34, 27]: # change number depending on whatever redshift you want to plot
+for snap in [80, 43, 27]:
     read_3d_2(snap=snap)
